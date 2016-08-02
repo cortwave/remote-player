@@ -4,68 +4,17 @@ import (
 	"io"
 	"log"
 	"os/exec"
+	"remote-player/util"
 )
 
 var stdin io.WriteCloser
 var cmd *exec.Cmd
 
-//PlayerMessage for playing manipulations
-type PlayerMessage interface {
-	Name() string
-}
-
-//PauseMessage for play/pause
-type PauseMessage struct {
-}
-
-//Name of PauseMessage
-func (p PauseMessage) Name() string {
-	return "pause"
-}
-
-//NewSongMessage for new song playing
-type NewSongMessage struct {
-	URL string
-}
-
-//Name of NewSongMessage
-func (n NewSongMessage) Name() string {
-	return "newSong"
-}
-
-//QuitMessage for quit
-type QuitMessage struct {
-}
-
-//Name of QuitMessage
-func (q QuitMessage) Name() string {
-	return "quit"
-}
-
-//IncreaseVolumeMessage for volume increasing
-type IncreaseVolumeMessage struct {
-	Points int
-}
-
-//Name of IncreaseVolumeMessage
-func (i IncreaseVolumeMessage) Name() string {
-	return "increaseVolume"
-}
-
-//DecreaseVolumeMessage for volume decreasing
-type DecreaseVolumeMessage struct {
-	Points int
-}
-
-//Name of DecreaseVolumeMessage
-func (i DecreaseVolumeMessage) Name() string {
-	return "decreaseVolume"
-}
-
 //StartPlayer returns channel for commands
 func StartPlayer() chan<- PlayerMessage {
 	messagesChannel := make(chan PlayerMessage)
 	go handleMessages(messagesChannel)
+	go startPlaying()
 	return messagesChannel
 }
 
@@ -75,15 +24,15 @@ func handleMessages(messagesChannel <-chan PlayerMessage) {
 		switch message.(type) {
 		case PauseMessage:
 			pause()
-		case NewSongMessage:
-			log.Println(message)
-			go playNew(message.(NewSongMessage).URL)
 		case QuitMessage:
 			quitPlayer()
 		case IncreaseVolumeMessage:
 			increaseVolume(message.(IncreaseVolumeMessage).Points)
 		case DecreaseVolumeMessage:
 			decreaseVolume(message.(DecreaseVolumeMessage).Points)
+		case AddSongMessage:
+			song := util.Song{URL: message.(AddSongMessage).URL}
+			util.Push(song)
 		}
 	}
 }
@@ -92,7 +41,9 @@ func pause() {
 	writeToPlayer("p")
 }
 
-func playNew(url string) {
+func startPlaying() {
+	url := util.Next().URL
+	log.Println(url)
 	if cmd != nil {
 		quitPlayer()
 	}
@@ -103,6 +54,8 @@ func playNew(url string) {
 	}
 	stdin = stdinPlayer
 	executeCmd(cmd)
+	log.Println("play end")
+	startPlaying()
 }
 
 func quitPlayer() {

@@ -7,7 +7,7 @@ import (
 	"remote-player/mplayer"
 )
 
-type newRequest struct {
+type songRequest struct {
 	URL string `json:"url"`
 }
 
@@ -23,24 +23,16 @@ func main() {
 
 func startHTTPServer() {
 	http.HandleFunc("/play", handlePlay)
-	http.HandleFunc("/new", handleNew)
 	http.HandleFunc("/quit", handleQuit)
 	http.HandleFunc("/increase", handleIncreaseVolume)
 	http.HandleFunc("/decrease", handleDecreaseVolume)
+	http.HandleFunc("/add", handleAddSongMessage)
 	http.ListenAndServe(":8000", nil)
 }
 
 func handlePlay(w http.ResponseWriter, r *http.Request) {
 	log.Println("play")
 	playerMessages <- mplayer.PauseMessage{}
-}
-
-func handleNew(w http.ResponseWriter, r *http.Request) {
-	log.Println("new")
-	request := newRequest{}
-	json.NewDecoder(r.Body).Decode(&request)
-	newSongMessage := mplayer.NewSongMessage{URL: request.URL}
-	playerMessages <- newSongMessage
 }
 
 func handleQuit(w http.ResponseWriter, r *http.Request) {
@@ -62,4 +54,12 @@ func handleDecreaseVolume(w http.ResponseWriter, r *http.Request) {
 	json.NewDecoder(r.Body).Decode(&request)
 	decreaseVolumeMessage := mplayer.DecreaseVolumeMessage{Points: request.Points}
 	playerMessages <- decreaseVolumeMessage
+}
+
+func handleAddSongMessage(w http.ResponseWriter, r *http.Request) {
+	log.Println("add song")
+	request := songRequest{}
+	json.NewDecoder(r.Body).Decode(&request)
+	addSongMessage := mplayer.AddSongMessage{URL: request.URL}
+	playerMessages <- addSongMessage
 }
